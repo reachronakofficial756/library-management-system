@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  --color-stripe-indigo: #635bff;
+  --color-stripe-indigo-hover: #533afd;
+  --color-stripe-indigo-dark: #4434d4;
+  --color-stripe-indigo-light: #f0f0ff;
+  --color-stripe-indigo-glow: rgba(99, 91, 255, 0.16);
+
+  --color-stripe-teal: #00d4b8;
+  --color-stripe-teal-light: #e6faf7;
+  --color-stripe-cyan: #00a4ff;
+
+  --color-stripe-ink: #0a2540;
+  --color-stripe-ink-secondary: #425466;
+  --color-stripe-ink-muted: #627d98;
+  --color-stripe-ink-subtle: #8898aa;
+
+  --color-stripe-canvas: #f8fafc;
+  --color-stripe-canvas-soft: #f6f9fc;
+  --color-stripe-card: #ffffff;
+  --color-stripe-border: #e3e8ee;
+  --color-stripe-border-light: #f0f3f7;
+
+  --color-stripe-green: #059669;
+  --color-stripe-green-light: #ecfdf5;
+  --color-stripe-green-border: #a7f3d0;
+
+  --color-stripe-coral: #ef4444;
+  --color-stripe-coral-light: #fef2f2;
+  --color-stripe-coral-border: #fecaca;
+
+  --color-stripe-amber: #f59e0b;
+  --color-stripe-amber-light: #fffbeb;
+  --color-stripe-amber-border: #fde68a;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --shadow-stripe-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  --shadow-stripe-card: 0 2px 5px -1px rgba(50, 50, 93, 0.1), 0 1px 3px -1px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(50, 50, 93, 0.05);
+  --shadow-stripe-card-hover: 0 13px 27px -5px rgba(50, 50, 93, 0.14), 0 8px 16px -8px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(50, 50, 93, 0.08);
+  --shadow-stripe-elevated: 0 30px 60px -12px rgba(50, 50, 93, 0.25), 0 18px 36px -18px rgba(0, 0, 0, 0.3);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    background-color: var(--color-stripe-canvas);
+    color: var(--color-stripe-ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+}
+
+/* ─── Stripe Visual Utilities ────────────────────────────────────────────── */
+.stripe-bg-gradient {
+  background: 
+    radial-gradient(ellipse at 15% 0%, rgba(99, 91, 255, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 85% 10%, rgba(0, 212, 184, 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(240, 243, 247, 0.8) 0%, transparent 70%),
+    #f8fafc;
+}
+
+.stripe-brand-gradient {
+  background: linear-gradient(135deg, #635bff 0%, #00d4b8 100%);
+}
+
+.stripe-dark-gradient {
+  background: linear-gradient(135deg, #0a2540 0%, #0d253d 100%);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Tabular figures for numerics */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Loading spinner */
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
