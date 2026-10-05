@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 
+/**
+ * BorrowRecord Schema — IA2 Specification:
+ * book (ref), member (ref), issueDate, dueDate, returnDate, status (issued / returned / overdue)
+ */
 const borrowRecordSchema = new mongoose.Schema(
   {
     book: {
@@ -30,28 +34,6 @@ const borrowRecordSchema = new mongoose.Schema(
       enum: ['issued', 'returned', 'overdue'],
       default: 'issued',
     },
-    fine: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    finePaid: {
-      type: Boolean,
-      default: false,
-    },
-    notes: {
-      type: String,
-      trim: true,
-      maxlength: [500, 'Notes cannot exceed 500 characters'],
-    },
-    issuedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Member', // librarian who issued the book
-    },
-    returnedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Member', // librarian who accepted return
-    },
   },
   {
     timestamps: true,
@@ -64,28 +46,11 @@ borrowRecordSchema.index({ member: 1, status: 1 });
 borrowRecordSchema.index({ status: 1 });
 borrowRecordSchema.index({ dueDate: 1 });
 
-// Virtual: isOverdue
-borrowRecordSchema.virtual('isOverdue').get(function () {
-  if (this.status === 'returned') return false;
-  return new Date() > this.dueDate;
-});
-
-// Middleware: auto-update status to overdue when retrieved
+// Middleware: populate references on find
 borrowRecordSchema.pre(/^find/, function (next) {
-  this.populate('book', 'title author ISBN coverImage')
-      .populate('member', 'name email membershipId');
+  this.populate('book', 'title author ISBN genre totalCopies availableCopies')
+      .populate('member', 'name email membershipId joinedDate');
   next();
 });
-
-// Static: fine calculation (10 rupees per day overdue)
-borrowRecordSchema.methods.calculateFine = function () {
-  if (this.status !== 'overdue' && this.status !== 'returned') return 0;
-  const returnOrNow = this.returnDate || new Date();
-  const overdueDays = Math.max(
-    0,
-    Math.ceil((returnOrNow - this.dueDate) / (1000 * 60 * 60 * 24))
-  );
-  return overdueDays * 10; // ₹10 per day
-};
 
 module.exports = mongoose.model('BorrowRecord', borrowRecordSchema);

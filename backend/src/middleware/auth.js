@@ -33,8 +33,8 @@ const protect = async (req, res, next) => {
 
     // Fetch user from DB
     const member = await Member.findById(decoded.id).select('-password');
-    if (!member || !member.isActive) {
-      return res.status(401).json({ success: false, message: 'User not found or account deactivated.' });
+    if (!member) {
+      return res.status(401).json({ success: false, message: 'User not found.' });
     }
 
     req.user = member;

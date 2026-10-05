@@ -29,7 +29,7 @@ const validate = (schema, source = 'body') => {
   };
 };
 
-// ─── Joi Schemas ─────────────────────────────────────────────────────────────
+// ─── Joi Schemas (Strictly Aligned to IA2 Specification) ────────────────────
 
 const bookSchemas = {
   create: Joi.object({
@@ -42,20 +42,20 @@ const bookSchemas = {
       .messages({ 'string.pattern.base': 'ISBN must be 10 or 13 digits' }),
     genre: Joi.string()
       .valid(
-        'Fiction', 'Non-Fiction', 'Science', 'Technology', 'History',
-        'Biography', 'Self-Help', 'Mystery', 'Fantasy', 'Romance',
-        'Horror', 'Philosophy', 'Economics', 'Politics', 'Art', 'Other'
+        'Fiction',
+        'Non-Fiction',
+        'Science',
+        'Technology',
+        'History',
+        'Biography',
+        'Self-Help',
+        'Mystery',
+        'Philosophy',
+        'Other'
       )
       .default('Other'),
     totalCopies: Joi.number().integer().min(1).required(),
     availableCopies: Joi.number().integer().min(0).required(),
-    description: Joi.string().trim().max(1000).optional().allow(''),
-    publishedYear: Joi.number()
-      .integer()
-      .min(1000)
-      .max(new Date().getFullYear())
-      .optional(),
-    coverImage: Joi.string().uri().optional().allow(''),
   }),
 
   list: Joi.object({
@@ -79,15 +79,8 @@ const memberSchemas = {
       .pattern(/^[A-Z0-9]{6,12}$/)
       .required()
       .messages({ 'string.pattern.base': 'Membership ID must be 6-12 alphanumeric characters' }),
-    phone: Joi.string()
-      .pattern(/^[+]?[\d\s\-()]{7,15}$/)
-      .optional()
-      .allow(''),
-    address: Joi.string().trim().max(300).optional().allow(''),
-    department: Joi.string().trim().max(100).optional().allow(''),
     role: Joi.string().valid('member', 'librarian').default('member'),
     password: Joi.string().min(6).optional().allow(''),
-    maxBorrowLimit: Joi.number().integer().min(1).max(10).default(5),
   }),
 };
 
@@ -100,7 +93,6 @@ const borrowSchemas = {
       'string.length': 'Invalid member ID format',
     }),
     dueDate: Joi.date().min('now').optional(),
-    notes: Joi.string().trim().max(500).optional().allow(''),
   }),
 };
 
@@ -113,8 +105,7 @@ const authSchemas = {
     name: Joi.string().trim().max(100).required(),
     email: Joi.string().trim().email().required(),
     password: Joi.string().min(6).required(),
-    department: Joi.string().trim().max(100).optional().allow(''),
-    phone: Joi.string().trim().max(20).optional().allow(''),
+    membershipId: Joi.string().trim().uppercase().optional(),
   }),
 };
 

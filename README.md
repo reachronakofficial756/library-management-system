@@ -160,17 +160,4 @@ This script launches simultaneous checkout requests against a single book with e
 
 ---
 
-## 🏛️ System Design Notes (Q3)
 
-### Architecture for Scale (500 campuses, 2M members)
-- **Load Balancer** → Multiple Node.js instances (horizontal scaling)
-- **MongoDB Sharded Cluster** with:
-  - `Book`: shard key = `{ genre: 1, _id: 1 }` (even distribution)
-  - `BorrowRecord`: shard key = `{ member: 1, issueDate: 1 }` (query locality)
-- **Redis Cache** for book catalog (TTL: 5 min, invalidated on update)
-- **CDN** for static frontend assets
-- **Auto-scaling** (AWS ASG / GCP MIG) for semester traffic spikes
-- **Message Queue** (Redis/SQS) for async fine calculation and notifications
-
-### State Management (Frontend)
-Local state (`useState`) + React Context for auth. No external library needed at this scale — React Query would be added for production caching.

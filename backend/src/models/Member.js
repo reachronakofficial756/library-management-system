@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+/**
+ * Member Schema — IA2 Specification:
+ * name, email, membershipId, joinedDate (plus password & role for librarian JWT auth)
+ */
 const memberSchema = new mongoose.Schema(
   {
     name: {
@@ -29,28 +33,9 @@ const memberSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-    phone: {
-      type: String,
-      trim: true,
-      match: [/^[+]?[\d\s\-()]{7,15}$/, 'Please enter a valid phone number'],
-    },
-    address: {
-      type: String,
-      trim: true,
-      maxlength: [300, 'Address cannot exceed 300 characters'],
-    },
-    department: {
-      type: String,
-      trim: true,
-      maxlength: [100, 'Department cannot exceed 100 characters'],
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
     role: {
       type: String,
-      enum: ['member', 'librarian', 'admin'],
+      enum: ['member', 'librarian'],
       default: 'member',
     },
     password: {
@@ -58,20 +43,14 @@ const memberSchema = new mongoose.Schema(
       minlength: [6, 'Password must be at least 6 characters'],
       select: false,
     },
-    maxBorrowLimit: {
-      type: Number,
-      default: 5,
-      min: 1,
-      max: 10,
-    },
   },
   {
     timestamps: true,
   }
 );
 
-// Index
-memberSchema.index({ name: 'text' });
+// Search index
+memberSchema.index({ name: 'text', email: 'text', membershipId: 1 });
 
 // Pre-save: hash password
 memberSchema.pre('save', async function (next) {

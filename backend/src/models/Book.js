@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 
+/**
+ * Book Schema — IA2 Specification:
+ * title, author, ISBN, genre, totalCopies, availableCopies
+ */
 const bookSchema = new mongoose.Schema(
   {
     title: {
@@ -33,13 +37,7 @@ const bookSchema = new mongoose.Schema(
         'Biography',
         'Self-Help',
         'Mystery',
-        'Fantasy',
-        'Romance',
-        'Horror',
         'Philosophy',
-        'Economics',
-        'Politics',
-        'Art',
         'Other',
       ],
       default: 'Other',
@@ -55,36 +53,17 @@ const bookSchema = new mongoose.Schema(
       required: [true, 'Available copies is required'],
       min: [0, 'Available copies cannot be negative'],
     },
-    description: {
-      type: String,
-      trim: true,
-      maxlength: [1000, 'Description cannot exceed 1000 characters'],
-    },
-    publishedYear: {
-      type: Number,
-      min: [1, 'Invalid year'],
-      max: [new Date().getFullYear(), 'Year cannot be in the future'],
-    },
-    coverImage: {
-      type: String,
-      default: '',
-    },
   },
   {
     timestamps: true,
   }
 );
 
-// Index for faster search
+// Search and genre indexes
 bookSchema.index({ title: 'text', author: 'text' });
 bookSchema.index({ genre: 1 });
 
-// Virtual: isAvailable
-bookSchema.virtual('isAvailable').get(function () {
-  return this.availableCopies > 0;
-});
-
-// Pre-save: ensure availableCopies <= totalCopies
+// Pre-save: ensure availableCopies does not exceed totalCopies
 bookSchema.pre('save', function (next) {
   if (this.availableCopies > this.totalCopies) {
     return next(new Error('Available copies cannot exceed total copies'));

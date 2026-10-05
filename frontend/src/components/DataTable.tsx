@@ -44,15 +44,15 @@ function DataTable<T>({
 
   return (
     <div className="w-full bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+      <div className="overflow-x-auto scrollbar-thin">
+        <table className="w-full text-left border-collapse min-w-[580px]">
           <thead>
             <tr className="bg-slate-50/75 border-b border-slate-200/80">
               {columns.map((col) => (
                 <th
                   key={String(col.key)}
                   style={{ width: col.width }}
-                  className={`px-5 py-3.5 text-[11px] font-semibold tracking-wider text-slate-500 uppercase ${
+                  className={`px-4 sm:px-5 py-3.5 text-[11px] font-semibold tracking-wider text-slate-500 uppercase ${
                     col.sortable && onSort ? 'cursor-pointer select-none hover:text-[#0a2540]' : ''
                   }`}
                   onClick={() => col.sortable && onSort && onSort(String(col.key))}
@@ -82,7 +82,7 @@ function DataTable<T>({
                 <td colSpan={columns.length} className="px-6 py-12 text-center text-slate-500 text-sm">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Loader2 size={24} className="text-[#635bff] spin" />
-                    <span>Loading data...</span>
+                    <span className="text-xs">Loading data...</span>
                   </div>
                 </td>
               </tr>
@@ -91,7 +91,7 @@ function DataTable<T>({
                 <td colSpan={columns.length} className="px-6 py-12 text-center text-slate-400 text-sm">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Inbox size={32} className="text-slate-300" />
-                    <p className="font-medium text-slate-600">{emptyMessage}</p>
+                    <p className="font-medium text-slate-600 text-xs">{emptyMessage}</p>
                   </div>
                 </td>
               </tr>
@@ -103,7 +103,7 @@ function DataTable<T>({
                   onClick={() => onRowClick?.(row)}
                 >
                   {columns.map((col) => (
-                    <td key={String(col.key)} className="px-5 py-4 text-sm text-[#0a2540] align-middle">
+                    <td key={String(col.key)} className="px-4 sm:px-5 py-3.5 sm:py-4 text-xs sm:text-sm text-[#0a2540] align-middle">
                       {col.render
                         ? col.render(getCellValue(row, col.key), row)
                         : String(getCellValue(row, col.key) ?? '—')}

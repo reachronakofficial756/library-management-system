@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { RefreshCw, AlertTriangle, CheckCircle, Clock, Loader2, ArrowRight } from 'lucide-react';
 import { formatDate, isPastDate } from '../lib/date';
 import toast from 'react-hot-toast';
@@ -6,53 +6,120 @@ import { borrowApi, getErrorMessage } from '../lib/api';
 import type { BorrowRecord } from '../types';
 import Pagination from '../components/Pagination';
 
+interface ReturnsPageState {
+  records: BorrowRecord[];
+  isLoading: boolean;
+  page: number;
+  totalPages: number;
+  total: number;
+  statusFilter: string;
+  returningId: string | null;
+  refreshTrigger: number;
+  mounting: boolean;
+  updating: boolean;
+  unmounting: boolean;
+}
+
 const ReturnsPage: React.FC = () => {
-  const [records, setRecords] = useState<BorrowRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [statusFilter, setStatusFilter] = useState('issued');
-  const [returningId, setReturningId] = useState<string | null>(null);
+  const [state, setState] = useState<ReturnsPageState>({
+    records: [],
+    isLoading: true,
+    page: 1,
+    totalPages: 1,
+    total: 0,
+    statusFilter: 'issued',
+    returningId: null,
+    refreshTrigger: 0,
+    mounting: true,
+    updating: false,
+    unmounting: false,
+  });
 
-  const fetchRecords = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const res = await borrowApi.getAll({ page, limit: 10, status: statusFilter || undefined });
-      setRecords(res.data.data);
-      setTotalPages(res.data.pagination.totalPages);
-      setTotal(res.data.pagination.total);
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setIsLoading(false);
+  const isInitialMount = React.useRef(true);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    // Track and update mounting vs updating state
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      setState((prev) => ({
+        ...prev,
+        mounting: true,
+        updating: false,
+        unmounting: false,
+        isLoading: true,
+      }));
+    } else {
+      setState((prev) => ({
+        ...prev,
+        mounting: false,
+        updating: true,
+        unmounting: false,
+        isLoading: true,
+      }));
     }
-  }, [page, statusFilter]);
 
-  useEffect(() => {
-    fetchRecords();
-  }, [fetchRecords]);
+    const loadRecords = async () => {
+      try {
+        const res = await borrowApi.getAll({
+          page: state.page,
+          limit: 10,
+          status: state.statusFilter || undefined,
+        });
+        if (isCurrent) {
+          setState((prev) => ({
+            ...prev,
+            records: res.data.data,
+            totalPages: res.data.pagination.totalPages,
+            total: res.data.pagination.total,
+            isLoading: false,
+            mounting: false,
+            updating: false,
+          }));
+        }
+      } catch (err) {
+        if (isCurrent) {
+          toast.error(getErrorMessage(err));
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            mounting: false,
+            updating: false,
+          }));
+        }
+      }
+    };
 
-  useEffect(() => {
-    setPage(1);
-  }, [statusFilter]);
+    loadRecords();
+
+    // Track and update unmounting state in cleanup
+    return () => {
+      isCurrent = false;
+      setState((prev) => ({
+        ...prev,
+        mounting: false,
+        updating: false,
+        unmounting: true,
+      }));
+    };
+  }, [state.page, state.statusFilter, state.refreshTrigger]);
+
+  const refresh = () => {
+    setState((prev) => ({ ...prev, refreshTrigger: prev.refreshTrigger + 1 }));
+  };
 
   const handleReturn = async (borrowId: string, bookTitle: string) => {
-    if (!window.confirm(`Return "${bookTitle}"? Fines will be calculated automatically at ₹5/day.`)) return;
-    setReturningId(borrowId);
+    if (!window.confirm(`Process return for "${bookTitle}"?`)) return;
+    setState((prev) => ({ ...prev, returningId: borrowId }));
     try {
-      const res = await borrowApi.returnBook(borrowId);
-      const { fine } = res.data.data;
-      toast.success(
-        fine > 0
-          ? `Book returned. Fine charged: ₹${fine}`
-          : 'Book returned successfully. No overdue fine.'
-      );
-      fetchRecords();
+      await borrowApi.returnBook(borrowId);
+      toast.success('Book returned successfully.');
+      refresh();
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
-      setReturningId(null);
+      setState((prev) => ({ ...prev, returningId: null }));
     }
   };
 
@@ -81,16 +148,16 @@ const ReturnsPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#0a2540]">Book Returns & Fines</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0a2540]">Book Returns</h1>
           <p className="text-xs text-slate-500 mt-1">
-            {total} loan record{total !== 1 ? 's' : ''} in system
+            {state.total} loan record{state.total !== 1 ? 's' : ''} in system
           </p>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <div className="flex items-center gap-1 sm:gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto max-w-full scrollbar-none">
           {[
             { label: 'Currently Issued', value: 'issued' },
             { label: 'Overdue', value: 'overdue' },
@@ -99,9 +166,9 @@ const ReturnsPage: React.FC = () => {
           ].map((tab) => (
             <button
               key={tab.value}
-              onClick={() => setStatusFilter(tab.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                statusFilter === tab.value
+              onClick={() => setState((prev) => ({ ...prev, statusFilter: tab.value, page: 1 }))}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
+                state.statusFilter === tab.value
                   ? 'bg-white text-[#635bff] shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
@@ -113,12 +180,12 @@ const ReturnsPage: React.FC = () => {
       </div>
 
       {/* Record Cards List */}
-      {isLoading ? (
+      {state.isLoading ? (
         <div className="p-12 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
           <Loader2 size={18} className="spin text-[#635bff]" />
           <span>Loading return records...</span>
         </div>
-      ) : records.length === 0 ? (
+      ) : state.records.length === 0 ? (
         <div className="p-12 text-center bg-white border border-slate-200 rounded-2xl shadow-xs">
           <RefreshCw size={36} className="text-slate-300 mx-auto mb-2" />
           <h3 className="text-sm font-semibold text-slate-700">No records found</h3>
@@ -126,7 +193,7 @@ const ReturnsPage: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {records.map((record) => {
+          {state.records.map((record) => {
             const isOverdue =
               record.status !== 'returned' && isPastDate(new Date(record.dueDate));
             return (
@@ -161,14 +228,8 @@ const ReturnsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Right: Actions & Fine */}
-                <div className="flex items-center justify-between md:justify-end gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100">
-                  {record.fine > 0 && (
-                    <span className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full">
-                      ₹{record.fine} Overdue Fine
-                    </span>
-                  )}
-
+                {/* Right: Actions */}
+                <div className="flex items-center justify-end gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 w-full md:w-auto">
                   {record.status !== 'returned' ? (
                     <button
                       onClick={() =>
@@ -177,10 +238,10 @@ const ReturnsPage: React.FC = () => {
                           typeof record.book === 'object' ? record.book.title : 'Book'
                         )
                       }
-                      disabled={returningId === record._id}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#635bff] hover:bg-[#533afd] text-white text-xs font-semibold shadow-xs shadow-[#635bff]/25 transition-all disabled:opacity-50"
+                      disabled={state.returningId === record._id}
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 md:py-2 rounded-xl bg-[#635bff] hover:bg-[#533afd] text-white text-xs font-semibold shadow-xs shadow-[#635bff]/25 transition-all disabled:opacity-50 w-full md:w-auto"
                     >
-                      {returningId === record._id ? (
+                      {state.returningId === record._id ? (
                         <Loader2 size={14} className="spin" />
                       ) : (
                         <>
@@ -203,10 +264,10 @@ const ReturnsPage: React.FC = () => {
 
       {/* Pagination */}
       <Pagination
-        currentPage={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        total={total}
+        currentPage={state.page}
+        totalPages={state.totalPages}
+        onPageChange={(p) => setState((prev) => ({ ...prev, page: p }))}
+        total={state.total}
         limit={10}
       />
     </div>
@@ -214,3 +275,4 @@ const ReturnsPage: React.FC = () => {
 };
 
 export default ReturnsPage;
+

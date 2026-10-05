@@ -20,7 +20,7 @@ const registerMember = async (req, res, next) => {
 
 /**
  * GET /api/members
- * List all members with pagination and search
+ * List all members (for dropdown selection in the frontend & listing)
  */
 const getMembers = async (req, res, next) => {
   try {
@@ -29,7 +29,6 @@ const getMembers = async (req, res, next) => {
       limit = 10,
       search,
       role,
-      isActive,
       sortBy = 'createdAt',
       sortOrder = 'desc',
     } = req.query;
@@ -37,7 +36,6 @@ const getMembers = async (req, res, next) => {
     const query = {};
 
     if (role) query.role = role;
-    if (isActive !== undefined) query.isActive = isActive === 'true';
 
     if (search && search.trim()) {
       query.$or = [
@@ -91,14 +89,13 @@ const getMemberById = async (req, res, next) => {
 
 /**
  * GET /api/members/:id/history
- * Get a member's complete borrow history
+ * Retrieve borrowing history for a specific member
  */
 const getMemberHistory = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { page = 1, limit = 10, status } = req.query;
 
-    // Verify member exists
     const member = await Member.findById(id);
     if (!member) {
       return res.status(404).json({ success: false, message: 'Member not found' });
@@ -117,15 +114,13 @@ const getMemberHistory = async (req, res, next) => {
       BorrowRecord.countDocuments(query),
     ]);
 
-    // Auto-update overdue statuses for display
+    // Check overdue status
     const now = new Date();
-    const enrichedRecords = records.map((r) => {
-      const obj = r.toObject({ virtuals: true });
+    const formattedRecords = records.map((r) => {
+      const obj = r.toObject();
       if (r.status === 'issued' && now > r.dueDate) {
         obj.status = 'overdue';
-        obj.isOverdue = true;
       }
-      obj.fine = r.calculateFine();
       return obj;
     });
 
@@ -137,8 +132,9 @@ const getMemberHistory = async (req, res, next) => {
           name: member.name,
           email: member.email,
           membershipId: member.membershipId,
+          joinedDate: member.joinedDate,
         },
-        records: enrichedRecords,
+        records: formattedRecords,
         pagination: {
           total,
           page: parseInt(page),
@@ -158,7 +154,6 @@ const getMemberHistory = async (req, res, next) => {
  */
 const updateMember = async (req, res, next) => {
   try {
-    // Prevent password update through this route
     delete req.body.password;
 
     const member = await Member.findByIdAndUpdate(req.params.id, req.body, {
@@ -202,8 +197,6 @@ const getMemberStats = async (req, res, next) => {
         returned,
         overdue,
         currentlyBorrowing: issued,
-        canBorrowMore: issued < member.maxBorrowLimit,
-        borrowLimit: member.maxBorrowLimit,
       },
     });
   } catch (error) {

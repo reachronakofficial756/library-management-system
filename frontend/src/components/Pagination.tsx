@@ -45,25 +45,25 @@ const Pagination: React.FC<PaginationProps> = ({
         <span className="font-semibold text-slate-700">{to}</span> of{' '}
         <span className="font-semibold text-slate-700">{total}</span> records
       </span>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-center">
         <button
-          className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+          className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs shrink-0"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
           aria-label="Previous Page"
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={15} />
         </button>
 
         {pages.map((page, i) =>
           page === '...' ? (
-            <span key={`dots-${i}`} className="px-2 text-xs text-slate-400">
+            <span key={`dots-${i}`} className="px-1.5 text-xs text-slate-400">
               …
             </span>
           ) : (
             <button
               key={page}
-              className={`min-w-8 h-8 px-2 rounded-lg text-xs font-medium transition-all ${
+              className={`min-w-7 h-7 sm:min-w-8 sm:h-8 px-1.5 sm:px-2 rounded-lg text-xs font-medium transition-all shrink-0 ${
                 currentPage === page
                   ? 'bg-[#635bff] text-white font-semibold shadow-xs'
                   : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -76,12 +76,12 @@ const Pagination: React.FC<PaginationProps> = ({
         )}
 
         <button
-          className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+          className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-xs shrink-0"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
           aria-label="Next Page"
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={15} />
         </button>
       </div>
     </div>

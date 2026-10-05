@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PlusCircle, Search, X, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { membersApi, getErrorMessage } from '../lib/api';
@@ -10,40 +10,71 @@ import { Link } from 'react-router-dom';
 import { formatDate } from '../lib/date';
 
 // ─── Add Member Modal ─────────────────────────────────────────────────────────
+interface AddMemberModalState {
+  name: string;
+  email: string;
+  membershipId: string;
+  role: 'member' | 'librarian';
+  password: string;
+  isLoading: boolean;
+  mounting: boolean;
+  updating: boolean;
+  unmounting: boolean;
+}
+
 const AddMemberModal: React.FC<{ onClose: () => void; onSuccess: () => void }> = ({
   onClose,
   onSuccess,
 }) => {
-  const [form, setForm] = useState({
+  const [modalState, setModalState] = useState<AddMemberModalState>({
     name: '',
     email: '',
     membershipId: '',
-    phone: '',
-    department: '',
-    role: 'member' as 'member' | 'librarian',
+    role: 'member',
     password: '',
-    maxBorrowLimit: 5,
+    isLoading: false,
+    mounting: true,
+    updating: false,
+    unmounting: false,
   });
-  const [isLoading, setIsLoading] = useState(false);
+
+  const isModalInitial = React.useRef(true);
+  useEffect(() => {
+    if (isModalInitial.current) {
+      isModalInitial.current = false;
+      setModalState((prev) => ({ ...prev, mounting: true, updating: false, unmounting: false }));
+    } else {
+      setModalState((prev) => ({ ...prev, mounting: false, updating: true, unmounting: false }));
+    }
+    return () => {
+      setModalState((prev) => ({ ...prev, mounting: false, updating: false, unmounting: true }));
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setModalState((prev) => ({ ...prev, isLoading: true }));
     try {
-      await membersApi.create(form);
+      await membersApi.create({
+        name: modalState.name,
+        email: modalState.email,
+        membershipId: modalState.membershipId,
+        role: modalState.role,
+        password: modalState.password || undefined,
+      });
       toast.success('Member registered successfully!');
       onSuccess();
       onClose();
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
-      setIsLoading(false);
+      setModalState((prev) => ({ ...prev, isLoading: false }));
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fadeIn" onClick={onClose}>
-      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl animate-scaleUp" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-fadeIn" onClick={onClose}>
+      <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 sm:p-8 shadow-2xl animate-scaleUp" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
           <div>
             <h2 className="text-lg font-bold text-[#0a2540]">Register New Member</h2>
@@ -60,8 +91,8 @@ const AddMemberModal: React.FC<{ onClose: () => void; onSuccess: () => void }> =
               <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
               <input
                 required
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                value={modalState.name}
+                onChange={(e) => setModalState((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="Rohan Mehta"
                 className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
               />
@@ -71,8 +102,8 @@ const AddMemberModal: React.FC<{ onClose: () => void; onSuccess: () => void }> =
               <input
                 required
                 type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                value={modalState.email}
+                onChange={(e) => setModalState((prev) => ({ ...prev, email: e.target.value }))}
                 placeholder="rohan@college.edu"
                 className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
               />
@@ -84,39 +115,18 @@ const AddMemberModal: React.FC<{ onClose: () => void; onSuccess: () => void }> =
               <label className="block text-xs font-semibold text-slate-700 mb-1">Membership ID *</label>
               <input
                 required
-                value={form.membershipId}
-                onChange={(e) => setForm({ ...form, membershipId: e.target.value.toUpperCase() })}
+                value={modalState.membershipId}
+                onChange={(e) => setModalState((prev) => ({ ...prev, membershipId: e.target.value.toUpperCase() }))}
                 placeholder="STU2024XX"
                 maxLength={12}
                 className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10 uppercase"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Phone</label>
-              <input
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="+91-9876543210"
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
-              <input
-                value={form.department}
-                onChange={(e) => setForm({ ...form, department: e.target.value })}
-                placeholder="Computer Science"
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Role</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Role *</label>
               <select
-                value={form.role}
-                onChange={(e) => setForm({ ...form, role: e.target.value as 'member' | 'librarian' })}
+                value={modalState.role}
+                onChange={(e) => setModalState((prev) => ({ ...prev, role: e.target.value as 'member' | 'librarian' }))}
                 className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
               >
                 <option value="member">Student / Member</option>
@@ -125,30 +135,15 @@ const AddMemberModal: React.FC<{ onClose: () => void; onSuccess: () => void }> =
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
-              <input
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="Default: member123"
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Borrow Limit</label>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={form.maxBorrowLimit}
-                onChange={(e) =>
-                  setForm({ ...form, maxBorrowLimit: parseInt(e.target.value) || 5 })
-                }
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
+            <input
+              type="password"
+              value={modalState.password}
+              onChange={(e) => setModalState((prev) => ({ ...prev, password: e.target.value }))}
+              placeholder="Default: member123"
+              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
+            />
           </div>
 
           <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
@@ -161,10 +156,10 @@ const AddMemberModal: React.FC<{ onClose: () => void; onSuccess: () => void }> =
             </button>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={modalState.isLoading}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#635bff] hover:bg-[#533afd] shadow-sm shadow-[#635bff]/25 disabled:opacity-50"
             >
-              {isLoading ? 'Registering...' : 'Register Member'}
+              {modalState.isLoading ? 'Registering...' : 'Register Member'}
             </button>
           </div>
         </form>
@@ -174,38 +169,111 @@ const AddMemberModal: React.FC<{ onClose: () => void; onSuccess: () => void }> =
 };
 
 // ─── Main Members Page ────────────────────────────────────────────────────────
-const MembersPage: React.FC = () => {
-  const [members, setMembers] = useState<Member[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
+interface MembersPageState {
+  members: Member[];
+  isLoading: boolean;
+  page: number;
+  totalPages: number;
+  total: number;
+  search: string;
+  roleFilter: string;
+  showAddModal: boolean;
+  refreshTrigger: number;
+  mounting: boolean;
+  updating: boolean;
+  unmounting: boolean;
+}
 
-  const fetchMembers = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const res = await membersApi.getAll({
-        page,
-        limit: 10,
-        search: search.trim() || undefined,
-        role: roleFilter || undefined,
-      });
-      setMembers(res.data.data);
-      setTotalPages(res.data.pagination.totalPages);
-      setTotal(res.data.pagination.total);
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [page, search, roleFilter]);
+const MembersPage: React.FC = () => {
+  const [state, setState] = useState<MembersPageState>({
+    members: [],
+    isLoading: true,
+    page: 1,
+    totalPages: 1,
+    total: 0,
+    search: '',
+    roleFilter: '',
+    showAddModal: false,
+    refreshTrigger: 0,
+    mounting: true,
+    updating: false,
+    unmounting: false,
+  });
+
+  const isInitialMount = React.useRef(true);
 
   useEffect(() => {
-    fetchMembers();
-  }, [fetchMembers]);
+    let isCurrent = true;
+
+    // Track and update mounting vs updating state
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      setState((prev) => ({
+        ...prev,
+        mounting: true,
+        updating: false,
+        unmounting: false,
+        isLoading: true,
+      }));
+    } else {
+      setState((prev) => ({
+        ...prev,
+        mounting: false,
+        updating: true,
+        unmounting: false,
+        isLoading: true,
+      }));
+    }
+
+    const loadMembers = async () => {
+      try {
+        const res = await membersApi.getAll({
+          page: state.page,
+          limit: 10,
+          search: state.search.trim() || undefined,
+          role: state.roleFilter || undefined,
+        });
+        if (isCurrent) {
+          setState((prev) => ({
+            ...prev,
+            members: res.data.data,
+            totalPages: res.data.pagination.totalPages,
+            total: res.data.pagination.total,
+            isLoading: false,
+            mounting: false,
+            updating: false,
+          }));
+        }
+      } catch (err) {
+        if (isCurrent) {
+          toast.error(getErrorMessage(err));
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            mounting: false,
+            updating: false,
+          }));
+        }
+      }
+    };
+
+    loadMembers();
+
+    // Track and update unmounting state in cleanup
+    return () => {
+      isCurrent = false;
+      setState((prev) => ({
+        ...prev,
+        mounting: false,
+        updating: false,
+        unmounting: true,
+      }));
+    };
+  }, [state.page, state.search, state.roleFilter, state.refreshTrigger]);
+
+  const refresh = () => {
+    setState((prev) => ({ ...prev, refreshTrigger: prev.refreshTrigger + 1 }));
+  };
 
   const columns: Column<Member>[] = [
     {
@@ -233,11 +301,6 @@ const MembersPage: React.FC = () => {
       ),
     },
     {
-      key: 'department',
-      header: 'Department',
-      render: (val) => <span className="text-xs text-slate-600">{String(val || '—')}</span>,
-    },
-    {
       key: 'role',
       header: 'Role',
       render: (val) => (
@@ -258,22 +321,6 @@ const MembersPage: React.FC = () => {
       render: (val) => <span className="text-xs text-slate-500 tabular-nums">{formatDate(String(val))}</span>,
     },
     {
-      key: 'isActive',
-      header: 'Status',
-      render: (val) => (
-        <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-            val
-              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
-              : 'bg-red-50 text-red-700 border border-red-200/80'
-          }`}
-        >
-          <span className={`w-1.5 h-1.5 rounded-full ${val ? 'bg-emerald-500' : 'bg-red-500'}`} />
-          {val ? 'Active' : 'Inactive'}
-        </span>
-      ),
-    },
-    {
       key: '_id',
       header: 'History',
       render: (_, row) => (
@@ -291,16 +338,16 @@ const MembersPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#0a2540]">Library Members</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0a2540]">Library Members</h1>
           <p className="text-xs text-slate-500 mt-1">
-            {total} registered student and faculty member{total !== 1 ? 's' : ''}
+            {state.total} registered student and faculty member{state.total !== 1 ? 's' : ''}
           </p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#635bff] hover:bg-[#533afd] text-white text-xs font-semibold shadow-md shadow-[#635bff]/25 transition-all"
+          onClick={() => setState((prev) => ({ ...prev, showAddModal: true }))}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 rounded-xl bg-[#635bff] hover:bg-[#533afd] text-white text-xs font-semibold shadow-md shadow-[#635bff]/25 transition-all w-full sm:w-auto"
         >
           <PlusCircle size={16} />
           <span>Register Member</span>
@@ -308,31 +355,29 @@ const MembersPage: React.FC = () => {
       </div>
 
       {/* Filter and Search */}
-      <div className="flex flex-col sm:flex-row items-center gap-3">
-        <div className="relative flex-1 w-full max-w-md">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="relative flex-1 w-full sm:max-w-md">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            value={search}
+            value={state.search}
             onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
+              setState((prev) => ({ ...prev, search: e.target.value, page: 1 }));
             }}
             placeholder="Search by name, email, or membership ID..."
             className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200/90 rounded-xl text-xs text-[#0a2540] placeholder:text-slate-400 focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10 transition-all shadow-xs"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 w-full sm:w-auto">
           {['', 'member', 'librarian'].map((role) => (
             <button
               key={role}
               onClick={() => {
-                setRoleFilter(role);
-                setPage(1);
+                setState((prev) => ({ ...prev, roleFilter: role, page: 1 }));
               }}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all ${
-                roleFilter === role
+              className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize whitespace-nowrap transition-all ${
+                state.roleFilter === role
                   ? 'bg-[#0a2540] text-white shadow-xs'
                   : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
@@ -345,27 +390,27 @@ const MembersPage: React.FC = () => {
 
       {/* Table */}
       <DataTable
-        data={members}
+        data={state.members}
         columns={columns}
-        isLoading={isLoading}
+        isLoading={state.isLoading}
         emptyMessage="No members found matching your search."
         rowKey={(m) => m._id}
       />
 
       {/* Pagination */}
       <Pagination
-        currentPage={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        total={total}
+        currentPage={state.page}
+        totalPages={state.totalPages}
+        onPageChange={(p) => setState((prev) => ({ ...prev, page: p }))}
+        total={state.total}
         limit={10}
       />
 
       {/* Modal */}
-      {showAddModal && (
+      {state.showAddModal && (
         <AddMemberModal
-          onClose={() => setShowAddModal(false)}
-          onSuccess={fetchMembers}
+          onClose={() => setState((prev) => ({ ...prev, showAddModal: false }))}
+          onSuccess={refresh}
         />
       )}
     </div>

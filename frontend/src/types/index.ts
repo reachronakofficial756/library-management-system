@@ -1,4 +1,4 @@
-// ─── Types: Book ─────────────────────────────────────────────────────────────
+// ─── Types: Book (IA2: title, author, ISBN, genre, totalCopies, availableCopies) ─
 export interface Book {
   _id: string;
   title: string;
@@ -7,10 +7,6 @@ export interface Book {
   genre: Genre;
   totalCopies: number;
   availableCopies: number;
-  description?: string;
-  publishedYear?: number;
-  coverImage?: string;
-  isAvailable?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -24,22 +20,22 @@ export type Genre =
   | 'Biography'
   | 'Self-Help'
   | 'Mystery'
-  | 'Fantasy'
-  | 'Romance'
-  | 'Horror'
   | 'Philosophy'
-  | 'Economics'
-  | 'Politics'
-  | 'Art'
   | 'Other';
 
 export const GENRES: Genre[] = [
-  'Fiction', 'Non-Fiction', 'Science', 'Technology', 'History',
-  'Biography', 'Self-Help', 'Mystery', 'Fantasy', 'Romance',
-  'Horror', 'Philosophy', 'Economics', 'Politics', 'Art', 'Other',
+  'Fiction',
+  'Non-Fiction',
+  'Science',
+  'Technology',
+  'History',
+  'Biography',
+  'Self-Help',
+  'Mystery',
+  'Philosophy',
+  'Other',
 ];
 
-// ─── Types: Member ────────────────────────────────────────────────────────────
 export type MemberRole = 'member' | 'librarian' | 'admin';
 
 export interface Member {
@@ -48,17 +44,12 @@ export interface Member {
   email: string;
   membershipId: string;
   joinedDate: string;
-  phone?: string;
-  address?: string;
-  department?: string;
-  isActive: boolean;
   role: MemberRole;
-  maxBorrowLimit: number;
   createdAt: string;
   updatedAt: string;
 }
 
-// ─── Types: BorrowRecord ──────────────────────────────────────────────────────
+// ─── Types: BorrowRecord (IA2: book, member, issueDate, dueDate, returnDate, status)
 export type BorrowStatus = 'issued' | 'returned' | 'overdue';
 
 export interface BorrowRecord {
@@ -69,12 +60,6 @@ export interface BorrowRecord {
   dueDate: string;
   returnDate?: string | null;
   status: BorrowStatus;
-  fine: number;
-  finePaid: boolean;
-  notes?: string;
-  issuedBy?: Member;
-  returnedBy?: Member;
-  isOverdue?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -97,8 +82,6 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
-  department?: string;
-  phone?: string;
 }
 
 export interface AuthResponse {
@@ -138,22 +121,19 @@ export interface BookListParams {
   sortOrder?: 'asc' | 'desc';
 }
 
+export interface BorrowStats {
+  total: number;
+  issued: number;
+  returned: number;
+  overdue: number;
+}
+
 export interface MemberStats {
   total: number;
   issued: number;
   returned: number;
   overdue: number;
   currentlyBorrowing: number;
-  canBorrowMore: boolean;
-  borrowLimit: number;
-}
-
-export interface BorrowStats {
-  total: number;
-  issued: number;
-  returned: number;
-  overdue: number;
-  totalFinesCollected: number;
 }
 
 // ─── Types: Forms ─────────────────────────────────────────────────────────────
@@ -161,7 +141,6 @@ export interface IssueBookForm {
   bookId: string;
   memberId: string;
   dueDate?: string;
-  notes?: string;
 }
 
 export interface AddBookForm {
@@ -171,8 +150,14 @@ export interface AddBookForm {
   genre: Genre;
   totalCopies: number;
   availableCopies: number;
-  description?: string;
-  publishedYear?: number;
+}
+
+export interface AddMemberForm {
+  name: string;
+  email: string;
+  membershipId: string;
+  role: MemberRole;
+  password?: string;
 }
 
 export interface MemberHistoryData {
@@ -185,3 +170,10 @@ export interface MemberHistoryData {
     totalPages: number;
   };
 }
+
+export interface ComponentLifecycle {
+  mounting: boolean;
+  updating: boolean;
+  unmounting: boolean;
+}
+

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, PlusCircle, X, BookOpen, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { booksApi, getErrorMessage } from '../lib/api';
@@ -46,36 +46,57 @@ const AddBookModal: React.FC<{ onClose: () => void; onSuccess: () => void }> = (
   onClose,
   onSuccess,
 }) => {
-  const [form, setForm] = useState({
+  const [modalState, setModalState] = useState({
     title: '',
     author: '',
     ISBN: '',
     genre: 'Fiction' as Genre,
     totalCopies: 1,
     availableCopies: 1,
-    description: '',
-    publishedYear: new Date().getFullYear(),
+    isLoading: false,
+    mounting: true,
+    updating: false,
+    unmounting: false,
   });
-  const [isLoading, setIsLoading] = useState(false);
+
+  const isModalInitial = React.useRef(true);
+  useEffect(() => {
+    if (isModalInitial.current) {
+      isModalInitial.current = false;
+      setModalState((prev) => ({ ...prev, mounting: true, updating: false, unmounting: false }));
+    } else {
+      setModalState((prev) => ({ ...prev, mounting: false, updating: true, unmounting: false }));
+    }
+    return () => {
+      setModalState((prev) => ({ ...prev, mounting: false, updating: false, unmounting: true }));
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setModalState((prev) => ({ ...prev, isLoading: true }));
     try {
-      await booksApi.create(form);
+      await booksApi.create({
+        title: modalState.title,
+        author: modalState.author,
+        ISBN: modalState.ISBN,
+        genre: modalState.genre,
+        totalCopies: modalState.totalCopies,
+        availableCopies: modalState.availableCopies,
+      });
       toast.success('Book added successfully!');
       onSuccess();
       onClose();
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
-      setIsLoading(false);
+      setModalState((prev) => ({ ...prev, isLoading: false }));
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fadeIn" onClick={onClose}>
-      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg p-6 sm:p-8 shadow-2xl animate-scaleUp" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-fadeIn" onClick={onClose}>
+      <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 sm:p-8 shadow-2xl animate-scaleUp" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
           <div>
             <h2 className="text-lg font-bold text-[#0a2540]">Add New Book</h2>
@@ -92,8 +113,8 @@ const AddBookModal: React.FC<{ onClose: () => void; onSuccess: () => void }> = (
               <label className="block text-xs font-semibold text-slate-700 mb-1">Title *</label>
               <input
                 required
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                value={modalState.title}
+                onChange={(e) => setModalState((prev) => ({ ...prev, title: e.target.value }))}
                 placeholder="Clean Code"
                 className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
               />
@@ -102,8 +123,8 @@ const AddBookModal: React.FC<{ onClose: () => void; onSuccess: () => void }> = (
               <label className="block text-xs font-semibold text-slate-700 mb-1">Author *</label>
               <input
                 required
-                value={form.author}
-                onChange={(e) => setForm({ ...form, author: e.target.value })}
+                value={modalState.author}
+                onChange={(e) => setModalState((prev) => ({ ...prev, author: e.target.value }))}
                 placeholder="Robert C. Martin"
                 className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
               />
@@ -115,8 +136,8 @@ const AddBookModal: React.FC<{ onClose: () => void; onSuccess: () => void }> = (
               <label className="block text-xs font-semibold text-slate-700 mb-1">ISBN (10 or 13 digits) *</label>
               <input
                 required
-                value={form.ISBN}
-                onChange={(e) => setForm({ ...form, ISBN: e.target.value })}
+                value={modalState.ISBN}
+                onChange={(e) => setModalState((prev) => ({ ...prev, ISBN: e.target.value }))}
                 placeholder="9780132350884"
                 className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
               />
@@ -124,8 +145,8 @@ const AddBookModal: React.FC<{ onClose: () => void; onSuccess: () => void }> = (
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Genre</label>
               <select
-                value={form.genre}
-                onChange={(e) => setForm({ ...form, genre: e.target.value as Genre })}
+                value={modalState.genre}
+                onChange={(e) => setModalState((prev) => ({ ...prev, genre: e.target.value as Genre }))}
                 className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
               >
                 {GENRES.map((g) => (
@@ -137,57 +158,35 @@ const AddBookModal: React.FC<{ onClose: () => void; onSuccess: () => void }> = (
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Total Copies *</label>
               <input
                 type="number"
                 min="1"
                 required
-                value={form.totalCopies}
+                value={modalState.totalCopies}
                 onChange={(e) => {
                   const val = parseInt(e.target.value) || 1;
-                  setForm({ ...form, totalCopies: val, availableCopies: val });
+                  setModalState((prev) => ({ ...prev, totalCopies: val, availableCopies: val }));
                 }}
                 className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Available *</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Available Copies *</label>
               <input
                 type="number"
                 min="0"
-                max={form.totalCopies}
+                max={modalState.totalCopies}
                 required
-                value={form.availableCopies}
+                value={modalState.availableCopies}
                 onChange={(e) =>
-                  setForm({ ...form, availableCopies: parseInt(e.target.value) || 0 })
+                  setModalState((prev) => ({ ...prev, availableCopies: parseInt(e.target.value) || 0 }))
                 }
                 className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Year</label>
-              <input
-                type="number"
-                value={form.publishedYear}
-                onChange={(e) =>
-                  setForm({ ...form, publishedYear: parseInt(e.target.value) || 2024 })
-                }
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Description</label>
-            <textarea
-              rows={2}
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Brief summary..."
-              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-[#0a2540] focus:bg-white focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10 resize-none"
-            />
           </div>
 
           <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
@@ -200,10 +199,10 @@ const AddBookModal: React.FC<{ onClose: () => void; onSuccess: () => void }> = (
             </button>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={modalState.isLoading}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#635bff] hover:bg-[#533afd] shadow-sm shadow-[#635bff]/25 disabled:opacity-50"
             >
-              {isLoading ? 'Adding...' : 'Add Book'}
+              {modalState.isLoading ? 'Adding...' : 'Add Book'}
             </button>
           </div>
         </form>
@@ -213,56 +212,130 @@ const AddBookModal: React.FC<{ onClose: () => void; onSuccess: () => void }> = (
 };
 
 // ─── Main Books Page ──────────────────────────────────────────────────────────
+interface BooksPageState {
+  books: Book[];
+  isLoading: boolean;
+  page: number;
+  totalPages: number;
+  total: number;
+  search: string;
+  selectedGenre: string;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
+  showAddModal: boolean;
+  refreshTrigger: number;
+  mounting: boolean;
+  updating: boolean;
+  unmounting: boolean;
+}
+
 const BooksPage: React.FC = () => {
   const { user } = useAuth();
   const isLibrarian = user?.role === 'librarian' || user?.role === 'admin';
 
-  const [books, setBooks] = useState<Book[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [search, setSearch] = useState('');
-  const [selectedGenre, setSelectedGenre] = useState('All');
-  const [sortBy, setSortBy] = useState('title');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [state, setState] = useState<BooksPageState>({
+    books: [],
+    isLoading: true,
+    page: 1,
+    totalPages: 1,
+    total: 0,
+    search: '',
+    selectedGenre: 'All',
+    sortBy: 'title',
+    sortOrder: 'asc',
+    showAddModal: false,
+    refreshTrigger: 0,
+    mounting: true,
+    updating: false,
+    unmounting: false,
+  });
 
-  const fetchBooks = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const params: BookListParams = {
-        page,
-        limit: 10,
-        sortBy,
-        sortOrder,
-      };
-      if (search.trim()) params.search = search.trim();
-      if (selectedGenre !== 'All') params.genre = selectedGenre;
-
-      const res = await booksApi.getAll(params);
-      setBooks(res.data.data);
-      setTotalPages(res.data.pagination.totalPages);
-      setTotal(res.data.pagination.total);
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [page, search, selectedGenre, sortBy, sortOrder]);
+  const isInitialMount = React.useRef(true);
 
   useEffect(() => {
-    fetchBooks();
-  }, [fetchBooks]);
+    let isCurrent = true;
+
+    // Track and update mounting vs updating state
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      setState((prev) => ({
+        ...prev,
+        mounting: true,
+        updating: false,
+        unmounting: false,
+        isLoading: true,
+      }));
+    } else {
+      setState((prev) => ({
+        ...prev,
+        mounting: false,
+        updating: true,
+        unmounting: false,
+        isLoading: true,
+      }));
+    }
+
+    const loadBooks = async () => {
+      try {
+        const params: BookListParams = {
+          page: state.page,
+          limit: 10,
+          sortBy: state.sortBy,
+          sortOrder: state.sortOrder,
+        };
+        if (state.search.trim()) params.search = state.search.trim();
+        if (state.selectedGenre !== 'All') params.genre = state.selectedGenre;
+
+        const res = await booksApi.getAll(params);
+        if (isCurrent) {
+          setState((prev) => ({
+            ...prev,
+            books: res.data.data,
+            totalPages: res.data.pagination.totalPages,
+            total: res.data.pagination.total,
+            isLoading: false,
+            mounting: false,
+            updating: false,
+          }));
+        }
+      } catch (err) {
+        if (isCurrent) {
+          toast.error(getErrorMessage(err));
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            mounting: false,
+            updating: false,
+          }));
+        }
+      }
+    };
+
+    loadBooks();
+
+    // Track and update unmounting state in cleanup
+    return () => {
+      isCurrent = false;
+      setState((prev) => ({
+        ...prev,
+        mounting: false,
+        updating: false,
+        unmounting: true,
+      }));
+    };
+  }, [state.page, state.search, state.selectedGenre, state.sortBy, state.sortOrder, state.refreshTrigger]);
+
+  const refresh = () => {
+    setState((prev) => ({ ...prev, refreshTrigger: prev.refreshTrigger + 1 }));
+  };
 
   const handleSort = (key: string) => {
-    if (sortBy === key) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(key);
-      setSortOrder('asc');
-    }
-    setPage(1);
+    setState((prev) => ({
+      ...prev,
+      page: 1,
+      sortBy: key,
+      sortOrder: prev.sortBy === key && prev.sortOrder === 'asc' ? 'desc' : 'asc',
+    }));
   };
 
   const handleDelete = async (id: string, title: string) => {
@@ -270,7 +343,7 @@ const BooksPage: React.FC = () => {
     try {
       await booksApi.delete(id);
       toast.success('Book deleted');
-      fetchBooks();
+      refresh();
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
@@ -319,11 +392,6 @@ const BooksPage: React.FC = () => {
         <AvailabilityBadge available={row.availableCopies} total={row.totalCopies} />
       ),
     },
-    {
-      key: 'publishedYear',
-      header: 'Year',
-      render: (val) => <span className="tabular-nums text-slate-500 text-xs">{String(val || '—')}</span>,
-    },
     ...(isLibrarian
       ? [
           {
@@ -349,17 +417,17 @@ const BooksPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#0a2540]">Book Catalog</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0a2540]">Book Catalog</h1>
           <p className="text-xs text-slate-500 mt-1">
-            {total} registered title{total !== 1 ? 's' : ''} in the system
+            {state.total} registered title{state.total !== 1 ? 's' : ''} in the system
           </p>
         </div>
         {isLibrarian && (
           <button
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#635bff] hover:bg-[#533afd] text-white text-xs font-semibold shadow-md shadow-[#635bff]/25 transition-all"
+            onClick={() => setState((prev) => ({ ...prev, showAddModal: true }))}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 rounded-xl bg-[#635bff] hover:bg-[#533afd] text-white text-xs font-semibold shadow-md shadow-[#635bff]/25 transition-all w-full sm:w-auto"
           >
             <PlusCircle size={16} />
             <span>Add New Book</span>
@@ -369,15 +437,14 @@ const BooksPage: React.FC = () => {
 
       {/* Search & Genre Filters */}
       <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1 w-full sm:max-w-md">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text"
-              value={search}
+              value={state.search}
               onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
+                setState((prev) => ({ ...prev, search: e.target.value, page: 1 }));
               }}
               placeholder="Search by title, author, or ISBN..."
               className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200/90 rounded-xl text-xs text-[#0a2540] placeholder:text-slate-400 focus:outline-none focus:border-[#635bff] focus:ring-2 focus:ring-[#635bff]/10 transition-all shadow-xs"
@@ -386,16 +453,15 @@ const BooksPage: React.FC = () => {
         </div>
 
         {/* Horizontal scrollable genre pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none -mx-1 px-1 touch-pan-x">
           {AVAILABLE_GENRES.map((g) => (
             <button
               key={g}
               onClick={() => {
-                setSelectedGenre(g);
-                setPage(1);
+                setState((prev) => ({ ...prev, selectedGenre: g, page: 1 }));
               }}
               className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                selectedGenre === g
+                state.selectedGenre === g
                   ? 'bg-[#0a2540] text-white shadow-xs'
                   : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
@@ -408,30 +474,30 @@ const BooksPage: React.FC = () => {
 
       {/* Table */}
       <DataTable
-        data={books}
+        data={state.books}
         columns={columns}
-        isLoading={isLoading}
+        isLoading={state.isLoading}
         emptyMessage="No books matching your criteria."
-        sortBy={sortBy}
-        sortOrder={sortOrder}
+        sortBy={state.sortBy}
+        sortOrder={state.sortOrder}
         onSort={handleSort}
         rowKey={(b) => b._id}
       />
 
       {/* Pagination */}
       <Pagination
-        currentPage={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        total={total}
+        currentPage={state.page}
+        totalPages={state.totalPages}
+        onPageChange={(p) => setState((prev) => ({ ...prev, page: p }))}
+        total={state.total}
         limit={10}
       />
 
       {/* Modal */}
-      {showAddModal && (
+      {state.showAddModal && (
         <AddBookModal
-          onClose={() => setShowAddModal(false)}
-          onSuccess={fetchBooks}
+          onClose={() => setState((prev) => ({ ...prev, showAddModal: false }))}
+          onSuccess={refresh}
         />
       )}
     </div>

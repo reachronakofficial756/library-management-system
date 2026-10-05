@@ -14,26 +14,88 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+interface AuthState {
+  user: AuthUser | null;
+  token: string | null;
+  isLoading: boolean;
+  mounting: boolean;
+  updating: boolean;
+  unmounting: boolean;
+}
 
-  // Restore session from localStorage on mount
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    token: null,
+    isLoading: true,
+    mounting: true,
+    updating: false,
+    unmounting: false,
+  });
+
+  const isInitialMount = React.useRef(true);
+
+  // Restore session from localStorage on mount and track lifecycle
   useEffect(() => {
+    // Track and update mounting vs updating state
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      setState((prev) => ({
+        ...prev,
+        mounting: true,
+        updating: false,
+        unmounting: false,
+      }));
+    } else {
+      setState((prev) => ({
+        ...prev,
+        mounting: false,
+        updating: true,
+        unmounting: false,
+      }));
+    }
+
     const storedToken = localStorage.getItem('shelflife_token');
     const storedUser = localStorage.getItem('shelflife_user');
 
     if (storedToken && storedUser) {
       try {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        setState((prev) => ({
+          ...prev,
+          token: storedToken,
+          user: JSON.parse(storedUser),
+          isLoading: false,
+          mounting: false,
+          updating: false,
+        }));
       } catch {
         localStorage.removeItem('shelflife_token');
         localStorage.removeItem('shelflife_user');
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          mounting: false,
+          updating: false,
+        }));
       }
+    } else {
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        mounting: false,
+        updating: false,
+      }));
     }
-    setIsLoading(false);
+
+    // Track and update unmounting state in cleanup
+    return () => {
+      setState((prev) => ({
+        ...prev,
+        mounting: false,
+        updating: false,
+        unmounting: true,
+      }));
+    };
   }, []);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
@@ -43,8 +105,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('shelflife_token', newToken);
     localStorage.setItem('shelflife_user', JSON.stringify(userData));
 
-    setToken(newToken);
-    setUser(userData);
+    setState((prev) => ({
+      ...prev,
+      token: newToken,
+      user: userData,
+    }));
   }, []);
 
   const register = useCallback(async (data: RegisterData) => {
@@ -54,24 +119,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('shelflife_token', newToken);
     localStorage.setItem('shelflife_user', JSON.stringify(userData));
 
-    setToken(newToken);
-    setUser(userData);
+    setState((prev) => ({
+      ...prev,
+      token: newToken,
+      user: userData,
+    }));
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem('shelflife_token');
     localStorage.removeItem('shelflife_user');
-    setToken(null);
-    setUser(null);
+    setState((prev) => ({
+      ...prev,
+      token: null,
+      user: null,
+    }));
   }, []);
 
   return (
     <AuthContext.Provider
       value={{
-        user,
-        token,
-        isAuthenticated: !!token && !!user,
-        isLoading,
+        user: state.user,
+        token: state.token,
+        isAuthenticated: !!state.token && !!state.user,
+        isLoading: state.isLoading,
         login,
         register,
         logout,

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { formatDate, isPastDate } from '../lib/date';
 import toast from 'react-hot-toast';
 import { membersApi, getErrorMessage } from '../lib/api';
 import type { BorrowRecord, Member } from '../types';
 import Pagination from '../components/Pagination';
+import { useAuth } from '../context/AuthContext';
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 const StatusBadge: React.FC<{ record: BorrowRecord }> = ({ record }) => {
@@ -36,70 +37,157 @@ const StatusBadge: React.FC<{ record: BorrowRecord }> = ({ record }) => {
   );
 };
 
+interface MemberHistoryPageState {
+  member: Partial<Member> | null;
+  records: BorrowRecord[];
+  isLoading: boolean;
+  page: number;
+  totalPages: number;
+  total: number;
+  statusFilter: string;
+  mounting: boolean;
+  updating: boolean;
+  unmounting: boolean;
+}
+
 // ─── Member History Page ──────────────────────────────────────────────────────
 const MemberHistoryPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
 
-  const [member, setMember] = useState<Partial<Member> | null>(null);
-  const [records, setRecords] = useState<BorrowRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [state, setState] = useState<MemberHistoryPageState>({
+    member: null,
+    records: [],
+    isLoading: true,
+    page: 1,
+    totalPages: 1,
+    total: 0,
+    statusFilter: '',
+    mounting: true,
+    updating: false,
+    unmounting: false,
+  });
+
+  const isInitialMount = React.useRef(true);
 
   useEffect(() => {
     if (!id) return;
+    let isCurrent = true;
+
+    // Track and update mounting vs updating state
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      setState((prev) => ({
+        ...prev,
+        mounting: true,
+        updating: false,
+        unmounting: false,
+        isLoading: true,
+      }));
+    } else {
+      setState((prev) => ({
+        ...prev,
+        mounting: false,
+        updating: true,
+        unmounting: false,
+        isLoading: true,
+      }));
+    }
+
     const load = async () => {
-      setIsLoading(true);
       try {
         const res = await membersApi.getHistory(id, {
-          page,
+          page: state.page,
           limit: 10,
-          status: statusFilter || undefined,
+          status: state.statusFilter || undefined,
         });
         const { member: m, records: r, pagination } = res.data.data;
-        setMember(m);
-        setRecords(r);
-        setTotalPages(pagination.totalPages);
-        setTotal(pagination.total);
+        if (isCurrent) {
+          setState((prev) => ({
+            ...prev,
+            member: m,
+            records: r,
+            totalPages: pagination.totalPages,
+            total: pagination.total,
+            isLoading: false,
+            mounting: false,
+            updating: false,
+          }));
+        }
       } catch (err) {
-        toast.error(getErrorMessage(err));
-      } finally {
-        setIsLoading(false);
+        if (isCurrent) {
+          toast.error(getErrorMessage(err));
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            mounting: false,
+            updating: false,
+          }));
+        }
       }
     };
-    load();
-  }, [id, page, statusFilter]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [statusFilter]);
+    load();
+
+    // Track and update unmounting state in cleanup
+    return () => {
+      isCurrent = false;
+      setState((prev) => ({
+        ...prev,
+        mounting: false,
+        updating: false,
+        unmounting: true,
+      }));
+    };
+  }, [id, state.page, state.statusFilter]);
+
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const isLibrarian = user?.role === 'librarian' || user?.role === 'admin';
+
+  const handleBack = () => {
+    if (!isLibrarian) {
+      // Regular members should go to dashboard (home)
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate('/dashboard');
+      }
+      return;
+    }
+
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/members');
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-3">
-          <Link
-            to="/members"
-            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors shadow-xs"
-            title="Back to members"
+          <button
+            type="button"
+            onClick={handleBack}
+            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors shadow-xs shrink-0 cursor-pointer"
+            title={isLibrarian ? 'Go back' : 'Back to Home'}
+            aria-label={isLibrarian ? 'Go back' : 'Back to Home'}
           >
             <ArrowLeft size={16} />
-          </Link>
+          </button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#0a2540]">
-              {member ? `${member.name}'s History` : 'Borrow History'}
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0a2540]">
+              {state.member ? `${state.member.name}'s History` : 'Borrow History'}
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              {member?.membershipId} · {member?.email}
+              {state.member?.membershipId} · {state.member?.email}
             </p>
           </div>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <div className="flex items-center gap-1 sm:gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 overflow-x-auto max-w-full scrollbar-none">
           {[
             { label: 'All', value: '' },
             { label: 'Issued', value: 'issued' },
@@ -108,9 +196,9 @@ const MemberHistoryPage: React.FC = () => {
           ].map((tab) => (
             <button
               key={tab.value}
-              onClick={() => setStatusFilter(tab.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                statusFilter === tab.value
+              onClick={() => setState((prev) => ({ ...prev, statusFilter: tab.value, page: 1 }))}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
+                state.statusFilter === tab.value
                   ? 'bg-white text-[#635bff] shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
@@ -122,9 +210,9 @@ const MemberHistoryPage: React.FC = () => {
       </div>
 
       {/* Record Cards */}
-      {isLoading ? (
+      {state.isLoading ? (
         <div className="p-12 text-center text-xs text-slate-400">Loading history...</div>
-      ) : records.length === 0 ? (
+      ) : state.records.length === 0 ? (
         <div className="p-12 text-center bg-white border border-slate-200 rounded-2xl shadow-xs">
           <BookOpen size={36} className="text-slate-300 mx-auto mb-2" />
           <h3 className="text-sm font-semibold text-slate-700">No records found</h3>
@@ -132,7 +220,7 @@ const MemberHistoryPage: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {records.map((record) => {
+          {state.records.map((record) => {
             const isOverdue =
               record.status === 'issued' && isPastDate(new Date(record.dueDate));
             return (
@@ -179,11 +267,6 @@ const MemberHistoryPage: React.FC = () => {
 
                   <div className="flex sm:flex-col items-end justify-between sm:justify-center gap-2">
                     <StatusBadge record={record} />
-                    {record.fine > 0 && (
-                      <span className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-                        ₹{record.fine} fine
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
@@ -194,10 +277,10 @@ const MemberHistoryPage: React.FC = () => {
 
       {/* Pagination */}
       <Pagination
-        currentPage={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        total={total}
+        currentPage={state.page}
+        totalPages={state.totalPages}
+        onPageChange={(p) => setState((prev) => ({ ...prev, page: p }))}
+        total={state.total}
         limit={10}
       />
     </div>

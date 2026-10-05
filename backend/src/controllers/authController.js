@@ -19,7 +19,7 @@ const login = async (req, res, next) => {
     const { email, password } = req.body;
 
     // Find member with password field included
-    const member = await Member.findOne({ email, isActive: true }).select('+password');
+    const member = await Member.findOne({ email }).select('+password');
 
     if (!member) {
       return res.status(401).json({ success: false, message: 'Invalid email or password.' });
@@ -28,7 +28,7 @@ const login = async (req, res, next) => {
     if (!member.password) {
       return res.status(401).json({
         success: false,
-        message: 'No password set for this account. Contact the admin.',
+        message: 'No password set for this account. Contact the administrator.',
       });
     }
 
@@ -77,7 +77,7 @@ const getMe = async (req, res, next) => {
  */
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, department, phone } = req.body;
+    const { name, email, password } = req.body;
 
     const existingMember = await Member.findOne({ email });
     if (existingMember) {
@@ -93,8 +93,6 @@ const register = async (req, res, next) => {
       email,
       password,
       membershipId,
-      department: department || '',
-      phone: phone || '',
       role: 'member',
     });
 

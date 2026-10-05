@@ -168,7 +168,7 @@ export const borrowApi = {
     }),
 
   returnBook: (borrowId: string) =>
-    request<ApiResponse<{ borrowRecord: BorrowRecord; fine: number }>>(`/borrow/return/${borrowId}`, {
+    request<ApiResponse<BorrowRecord>>(`/borrow/return/${borrowId}`, {
       method: 'POST',
     }),
 
